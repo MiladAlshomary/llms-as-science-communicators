@@ -7,7 +7,7 @@ os.environ['HF_DATASETS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ["WANDB_DIR"] = '/mnt/swordfish-pool2/milad/wandb-dir'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 os.environ['TORCH_USE_CUDA_DSA']='1'
-sys.path.append('./src')
+sys.path.append('./src-py')
 
 import datasets
 import json
@@ -37,7 +37,9 @@ import argparse
 from nltk import tokenize
 import utils
 
-huggingface_token = os.environ['hf_token']
+import json
+keys = json.load(open('../keys.json'))
+huggingface_token = os.environ[keys['hf_token']]
 
 def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eval_steps=200, max_length=2500, num_train_epochs=3, resume_from_checkpoint=False, extra_args=None):
 

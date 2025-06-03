@@ -11,7 +11,6 @@ from transformers import pipeline, TextStreamer
 import torch
 from transformers import BitsAndBytesConfig
 from rouge_score import rouge_scorer
-#from distinct_n import distinct_n_corpus_level, distinct_n_sentence_level
 from evaluate import load
 bertscore = load("bertscore")
 import numpy as np
@@ -26,15 +25,6 @@ from peft import PeftModel, PeftConfig, AutoPeftModelForCausalLM
 q=BitsAndBytesConfig(load_in_8bit=True)
 
 
-# llama3_pipeline = pipeline(
-#     "text-generation",
-#     model="meta-llama/Meta-Llama-3-8B-Instruct",
-#     model_kwargs={"torch_dtype": torch.bfloat16, "quantization_config":q},
-# )
-# terminators = [
-#     llama3_pipeline.tokenizer.eos_token_id,
-#     llama3_pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-# ]
 
 llm_to_use='chat-gpt'
 

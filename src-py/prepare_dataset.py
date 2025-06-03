@@ -3,7 +3,7 @@ import sys
 os.environ['TRANSFORMERS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ['HF_DATASETS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ["WANDB_DIR"] = '/mnt/swordfish-pool2/milad/wandb-dir'
-sys.path.append('./src')
+sys.path.append('./src-py')
 
 
 from datasets import Dataset, DatasetDict
