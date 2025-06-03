@@ -1,4 +1,4 @@
-#########################
+######################### pr generation prompts ###################
 
 baseline_pr_generation = {
     "strategy_name": "baseline_pr_generation",
@@ -46,7 +46,7 @@ pr_generation_by_conv_summarization = {
     }
 }
 
-######################### LLM-based evaluation prompts #############################
+######################### LLM-based conversation evaluation prompts #############################
 factuality_eval_prompt = {
     "strategy_name": "factuality_eval_prompt",
     "instruction": """
