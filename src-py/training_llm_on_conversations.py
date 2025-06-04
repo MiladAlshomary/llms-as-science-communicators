@@ -27,13 +27,11 @@ from trl import setup_chat_format
 from trl import SFTTrainer, SFTConfig
 from transformers import EarlyStoppingCallback
 
-from datasets import Dataset
 
 from accelerate import PartialState
 device_string = PartialState().process_index
 
 import argparse
-from nltk import tokenize
 
 import json
 keys = json.load(open('../keys.json'))
