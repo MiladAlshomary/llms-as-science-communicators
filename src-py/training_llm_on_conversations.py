@@ -34,7 +34,6 @@ device_string = PartialState().process_index
 
 import argparse
 from nltk import tokenize
-import utils
 
 import json
 keys = json.load(open('../keys.json'))
