@@ -35,7 +35,7 @@ import argparse
 
 import json
 keys = json.load(open('../keys.json'))
-huggingface_token = os.environ[keys['hf_token']]
+huggingface_token = keys['hf_token']
 
 def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eval_steps=200, max_length=2500, num_train_epochs=3, resume_from_checkpoint=False, extra_args=None):
 
