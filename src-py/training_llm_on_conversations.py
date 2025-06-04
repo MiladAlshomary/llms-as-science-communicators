@@ -51,7 +51,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
         train_ds = train_ds.map(lambda row: {'norm_prompt': normalize_chat_roles(row['prompt'])})
         valid_ds = valid_ds.map(lambda row: {'norm_prompt': normalize_chat_roles(row['prompt'])})
     
-    #wandb.init(project="training-llama-on-conversations", name=run_name)
+    wandb.init(project="training-llama-on-conversations", name=run_name)
 
     if 'qwen' in run_name:
         peft_config = LoraConfig(
