@@ -3,10 +3,10 @@
 #### Training LLAMA-3 model
 
 **Researcher**: 
-/local/nlp/milad/code/communicating-science-to-the-public/training_llm_on_conversations.py train /mnt/swordfish-pool2/milad/communicating-science-to-the-public/deepseek-final-conv-ds-preprocessed-for-llama3/train_researcher_ds /mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/ --training_epochs 3 --run_name llama3-trained-researcher-on-deepseek --eval_steps 100 --lora_rank 16 --lora_alpha 32
+CUDA_VISIBLE_DEVICES=3 python training_llm_on_conversations.py train /mnt/swordfish-pool2/milad/communicating-science-to-the-public/deepseek-final-conv-ds-preprocessed-for-llama3/train_researcher_ds /mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/ --training_epochs 3 --run_name llama3-trained-researcher-on-deepseek --eval_steps 100 --lora_rank 16 --lora_alpha 32
 
 **Journalist**: 
-/local/nlp/milad/code/communicating-science-to-the-public/training_llm_on_conversations.py train /mnt/swordfish-pool2/milad/communicating-science-to-the-public/deepseek-final-conv-ds-preprocessed-for-llama3/train_journalist_ds /mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/ --training_epochs 3 --run_name llama3-trained-journalist-on-deepseek --eval_steps 100 --lora_rank 16 --lora_alpha 32
+CUDA_VISIBLE_DEVICES=1 python training_llm_on_conversations.py train /mnt/swordfish-pool2/milad/communicating-science-to-the-public/deepseek-final-conv-ds-preprocessed-for-llama3/train_journalist_ds /mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/ --training_epochs 3 --run_name llama3-trained-journalist-on-deepseek --eval_steps 100 --lora_rank 16 --lora_alpha 32
 
 
 #### Training Qwen model

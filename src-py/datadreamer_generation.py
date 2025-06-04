@@ -36,8 +36,8 @@ llama3 = OpenAI(model_name="meta-llama/Meta-Llama-3-8B-Instruct", api_key='', ba
 
 
 
-gpt3 = OpenAI(model_name="gpt-3.5-turbo", api_key=os.env['OPENAI_API_KEY'])
-gpt4 = OpenAI(model_name="gpt-4", api_key=os.env['OPENAI_API_KEY'])
+gpt3 = OpenAI(model_name="gpt-3.5-turbo", api_key=os.environ['OPENAI_API_KEY'])
+gpt4 = OpenAI(model_name="gpt-4", api_key=os.environ['OPENAI_API_KEY'])
 
 
 gpt_tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
