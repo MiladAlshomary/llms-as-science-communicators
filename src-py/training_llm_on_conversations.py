@@ -45,7 +45,8 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
     print(extra_args)
     print('=====================')
     # Shuffle the training set
-    train_ds = train_ds.shuffle().select(range(40000))
+    #train_ds = train_ds.shuffle().select(range(40000))
+    train_ds = train_ds.shuffle()
     valid_ds = valid_ds.select(range(5000))
     #save the dataset we trained on
 
