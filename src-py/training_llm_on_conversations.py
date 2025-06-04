@@ -17,7 +17,6 @@ import torch
 import re
 import random
 import wandb
-import tiktoken
 from transformers import AutoTokenizer
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer, TextStreamer
@@ -261,9 +260,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    
-    if args.action == 'prepare_data':
-        prepare_dataset_for_training(args.conv_ds_path, args.output_path, args.role_name)
-
-    elif args.action == 'train':           
-        train_main(args.conv_ds_path, args.output_path, args.model_name, args.run_name, args.training_epochs, args.resume_from_checkpoint, args)
+    train_main(args.conv_ds_path, args.output_path, args.model_name, args.run_name, args.training_epochs, args.resume_from_checkpoint, args)
