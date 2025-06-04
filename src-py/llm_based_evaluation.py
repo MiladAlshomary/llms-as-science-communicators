@@ -71,8 +71,8 @@ def evaluate_communicative_quality(dataset, eval_prompt):
     dataset = dataset.add_column('{}_scoring_parsed'.format(eval_prompt['strategy_name']), eval_scores)
     return dataset
     
-def get_llm_avg_scores(llm_eval):
-    scoring_matrix = np.array([[item['{}_eval_prompt_scoring_parsed'.format(aspect)]['score'] for aspect in ['scientific', 'societal', 'clarity', 'relevancy'] if '{}_eval_prompt_scoring_parsed'.format(aspect) in item]
+def get_llm_avg_scores(llm_eval, prompts_to_eval):
+    scoring_matrix = np.array([[item['{}_eval_prompt_scoring_parsed'.format(prompt['strategy_name'])]['score'] for prompt in prompts_to_eval if '{}_eval_prompt_scoring_parsed'.format(prompt['strategy_name']) in item]
                      for item in llm_eval]).astype(int)
     scoring_matrix[scoring_matrix == None] = 0.00
     avg_scoring = np.mean(scoring_matrix, axis=0).astype(float)
@@ -98,7 +98,7 @@ def llm_based_evaluation(prompts_to_eval, datasets_to_eval, force_generation=Fal
             ds.save_to_disk(ds_path + '/ds_eval')
 
     print(tabulate(
-        [[name] + get_llm_avg_scores(res) for name, res in llm_eval_results.items()],
+        [[name] + get_llm_avg_scores(res, prompts_to_eval) for name, res in llm_eval_results.items()],
         headers=['#'] + [p['strategy_name'] for p in prompts_to_eval] + ['Avg']
     ))
 
