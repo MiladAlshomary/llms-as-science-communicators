@@ -26,7 +26,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from trl import setup_chat_format
 from trl import SFTTrainer, SFTConfig
 from transformers import EarlyStoppingCallback
-
+from huggingface_hub import login
 
 from accelerate import PartialState
 device_string = PartialState().process_index
@@ -36,6 +36,8 @@ import argparse
 import json
 keys = json.load(open('../keys.json'))
 huggingface_token = keys['hf_token']
+
+login(huggingface_token)
 
 def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eval_steps=200, max_length=2500, num_train_epochs=3, resume_from_checkpoint=False, extra_args=None):
 
@@ -103,6 +105,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
         push_to_hub=True,
         eval_steps=eval_steps,
         save_steps=eval_steps,
+        save_total_limit=3,
         report_to="wandb",
         #dataset_text_field="chat_text",
         max_seq_length=max_length,
