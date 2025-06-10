@@ -54,22 +54,76 @@ def truncate_text(tokenizer, text, max_tokens):
 
     return result.strip()
 
+def is_paragraph_complete(paragraph: str) -> bool:
+    """
+    Checks if the paragraph ends with a sentence-ending punctuation mark.
+    Accepts ., !, or ? possibly followed by quotes or brackets.
+    """
+    # Normalize whitespace at the end
+    paragraph = paragraph.strip()
+
+    # Regex: sentence should end in . ! ? possibly followed by quotes or brackets
+    pattern = r"[.?!…](['”\"\)]*)\s*$"
+    return bool(re.search(pattern, paragraph))
+
+def extract_complete_paragraphs(text: str, max_paragraphs: int = 3) -> str:
+    """
+    Extracts up to `max_paragraphs` that end properly from the given text.
+    
+    Parameters:
+    - text (str): Model-generated output
+    - max_paragraphs (int): Maximum number of paragraphs to include (optional)
+    
+    Returns:
+    - str: Cleaned text of fully complete paragraphs only
+    """
+    # Split and clean
+    paragraphs = [p.strip() for p in text.strip().split('\n\n') if p.strip()]
+    
+    complete_paragraphs = []
+    for paragraph in paragraphs:
+        if is_paragraph_complete(paragraph):
+            complete_paragraphs.append(paragraph)
+            if len(complete_paragraphs) >= max_paragraphs:
+                break
+        else:
+            break  # Stop at the first incomplete paragraph
+
+    if len(complete_paragraphs) == 0: # we failed in cutting
+        return text
+    else:
+        return '\n\n'.join(complete_paragraphs)
+
 
 def load_model_with_adapter(base_model_path, adapter_path="", device_map="auto"):
-    base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_path,
-        torch_dtype=torch.bfloat16,
-        device_map=device_map,
-    )
+    
 
     if adapter_path != "":
+        # Load LoRA config
         peft_config = PeftConfig.from_pretrained(adapter_path)
-        base_model.load_adapter(adapter_path)
+        
+        # Load base model
+        base_model = AutoModelForCausalLM.from_pretrained(
+            peft_config.base_model_name_or_path,
+            torch_dtype=torch.bfloat16,
+            device_map=device_map,
+        )
+        
+        # Load model with LoRA adapter applied
+        base_model = PeftModel.from_pretrained(base_model, adapter_path)
+        
+        # Load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(peft_config.base_model_name_or_path)
-        tokenizer.pad_token = tokenizer.eos_token  # set pad token
+        tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "right"
+        
         return base_model, tokenizer
     else:
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_path,
+            torch_dtype=torch.bfloat16,
+            device_map=device_map,
+        )
         tokenizer = AutoTokenizer.from_pretrained(base_model_path)
         tokenizer.padding_side = "right"
         tokenizer.pad_token = tokenizer.eos_token  # set pad token
@@ -202,13 +256,11 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
     def generate_response(pipe, messages, batch_size=1, max_new_tokens=100):
         prompts = [pipe.tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in messages]
         all_responses = []
-        # print(prompts[0])
         # print('============================')
         responses = pipe(
             prompts,
             max_new_tokens=max_new_tokens,
             eos_token_id= terminators,
-            do_sample=True,
             temperature=0.7,
             top_p=0.9,
             min_new_tokens=10,
@@ -216,6 +268,7 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
             pad_token_id=pipe.tokenizer.eos_token_id
         )
         responses = [r[0]['generated_text'][len(prompts[i]):].strip() for i, r in enumerate(responses)]
+        responses = [extract_complete_paragraphs(r) for r in responses]
 
         return responses
 
