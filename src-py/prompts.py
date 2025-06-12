@@ -401,9 +401,6 @@ composite_prompt = {
     "strategy_name": "composite",
     "instruction": """Please simulate a conversation between a researcher and a journalist regarding the researcher's scientific paper. The goal of the conversation is to gain a deeper understanding of the researcher's scientific paper and communicate its impact to the public through a journalistic report.
 
-    General Guidelines:
-        1. The Researcher and Journalist both read the scientific paper.
-
     Guidelines for Researcher's answers:
         [researcher-guidelines]
     Guidelines for the Journalist's questions:
@@ -417,17 +414,19 @@ composite_prompt = {
 
 researcher_guidelines = {
     'na': """""", 
-    #'young-researcher': """The researcher finds it challenging to simplify their research and convey its impacts to a general audience. Their deep understanding of the subject matter can make it difficult to identify which details are essential for a lay audience and which can be omitted""",
-    #'experienced-researcher': """The researcher is excellent at communicating their research in a simple and everyday life language
-    #"""
+    'experienced-researcher': """
+        1. The researcher are excellent at communicating your research in a simple and everyday life language
+        2. The researcher knows how to communicate the socieal impact of your research.
+        3. The researcher knows how to put your research in the proper scientific context
+    """
 }
 
 journalist_guidelines = {
     'na': "",
     'generic-guidelines': """
-    1. The journalist asks questions encouraging the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
-    2. The journalist's questions focus on topics in the paper that are novelty and have unexpected results.
-    3. The Journalist's questions follow up on the researcher's answers trying to clarify unexplained technical terms in everyday language.
+        1. The journalist questions encouraging the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
+        2. The journalist focus on topics in the paper that are novelty and have unexpected results.
+        3. The journalist follow up on the researcher's answers trying to clarify unexplained technical terms in everyday language.
 """,
     'pr-guided': """
     1. The journalist has access to the gold standard journalistic report.

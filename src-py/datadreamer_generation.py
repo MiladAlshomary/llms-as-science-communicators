@@ -146,8 +146,6 @@ def generate_conversation(data_path, model_name, dataset, prompt, encoding, max_
           args={
              "llm": model,
              "n": 1,
-             "temperature": 0.5,
-             "top_p": 0.5,
              "max_new_tokens":max_new_tokens,
              "instruction": prompt['instruction']
           }, # Tem and top_p taken from here https://community.openai.com/t/cheat-sheet-mastering-temperature-and-top-p-in-chatgpt-api/172683
