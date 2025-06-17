@@ -74,6 +74,7 @@ def evaluate_communicative_quality(dataset, eval_prompt):
 def get_llm_avg_scores(llm_eval, prompts_to_eval):
     scoring_matrix = np.array([[item['{}_scoring_parsed'.format(prompt['strategy_name'])]['score'] for prompt in prompts_to_eval if '{}_scoring_parsed'.format(prompt['strategy_name']) in item]
                      for item in llm_eval]).astype(int)
+    
     scoring_matrix[scoring_matrix == None] = 0.00
     avg_scoring = np.mean(scoring_matrix, axis=0).astype(float)
     avg_scoring = np.around(avg_scoring, 2)

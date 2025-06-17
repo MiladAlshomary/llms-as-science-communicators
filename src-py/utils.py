@@ -256,7 +256,8 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
     def generate_response(pipe, messages, batch_size=1, max_new_tokens=100):
         prompts = [pipe.tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in messages]
         all_responses = []
-        # print('============================')
+        #print(prompts[0])
+        #print('============================')
         responses = pipe(
             prompts,
             max_new_tokens=max_new_tokens,
