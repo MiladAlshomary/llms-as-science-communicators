@@ -42,10 +42,10 @@ def generate_conversations_interactively(ds, output_path, base_model_name, journ
         researcher_prompt = """
             You are a helpful and expert researcher answering questions about your scientific paper. 
             1. You are excellent at communicating your research in a simple and everyday life language
-            2. You know how to communicate the socieal impact of your research.
+            2. You know how to communicate the social impact of your research.
             3. You know how to put your research in the proper scientific context
             
-            Answer the question in maximum two to three paragraphs
+            Limit your answer to one single paragraph
         """
     else:
         researcher_prompt = "You are a helpful and expert researcher answering questions about your scientific paper."
@@ -55,15 +55,18 @@ def generate_conversations_interactively(ds, output_path, base_model_name, journ
     if journalist_adapter_name == "":
         journalist_prompt = """
             You are a helpful and knowledgeable journalist asking questions about a scientific paper. 
-            1. Your questions encouraging the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
-            2. Your questions focus on topics in the paper that are novelty and have unexpected results.
-            3. Your questions follow up on the researcher's answers trying to clarify unexplained technical terms in everyday language.
+            1. Your questions encourage the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
+            2. Your questions focus on topics in the paper that are novel and have unexpected results.
+            3. Your questions follow up on the researcher's answers, trying to clarify unexplained technical terms in everyday language.
             
-            Ask a new question or a follow-up question on the conversation
+            Ask a single new question or a follow-up question on the conversation.
         """
     else:
         journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper."
 
+    print(researcher_prompt)
+    print(journalist_prompt)
+    
     journalist_model, tokenizer = utils.load_model_with_adapter(base_model_name, journalist_adapter_name, device_map="cuda:0")
     researcher_model, tokenizer = utils.load_model_with_adapter(base_model_name, researcher_adapter_name, device_map="cuda:1")
     journalist_pipeline = pipeline("text-generation", model=journalist_model, tokenizer=tokenizer, batch_size=12)

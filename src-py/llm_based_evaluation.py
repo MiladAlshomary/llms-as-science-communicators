@@ -14,8 +14,12 @@ from openai import OpenAIError  # Base class for OpenAI exceptions
 import openai
 import json
 from tqdm import tqdm
+from openai.lib._pydantic import to_strict_json_schema
+
+keys = json.load(open('./keys.json'))
 
 eval_client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
+#eval_client = OpenAI(api_key=keys['OPENAI_API_KEY'])
 
 
 class ThreePoints(int, Enum):
@@ -39,22 +43,25 @@ class FivePointsScoring(BaseModel):
     score: FivePoints
 
 
-def evaluate_communicative_quality(dataset, eval_prompt):
+def evaluate_communicative_quality(dataset, eval_prompt, evaluator_name):
 
-    json_schema = FivePointsScoring.model_json_schema() if eval_prompt['scoring_scheme'] == '5_points' else ThreePointsScoring.model_json_schema()
+    #json_schema = FivePointsScoring.model_json_schema() if eval_prompt['scoring_scheme'] == '5_points' else ThreePointsScoring.model_json_schema()
+    json_schema = to_strict_json_schema(FivePointsScoring) if eval_prompt['scoring_scheme'] == '5_points' else to_strict_json_schema(ThreePointsScoring)
     eval_scores = []
     for row in tqdm(dataset):
         instruction = '{}\n\n{}'.format(eval_prompt['instruction'], '\n\n'.join(["{}: {}".format(input_name, row[input_val]) for input_name, input_val in eval_prompt['inputs'].items()]))
         completion = eval_client.chat.completions.create(
-            model="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+            model=evaluator_name,
             messages=[
                 {
                     "role": "user",
                     "content": instruction,
                 }
             ],
+            #response_format={"type": "json_schema", "json_schema": {"name": eval_prompt['scoring_scheme'], "schema": json_schema}}
             extra_body={"guided_json": json_schema},
         )
+        #score = completion.choices[0].message.content
         score = completion.choices[0].message.reasoning_content
         try:
             eval_scores.append(json.loads(score))           
@@ -81,22 +88,22 @@ def get_llm_avg_scores(llm_eval, prompts_to_eval):
     return list(avg_scoring) + [round(np.mean(avg_scoring), 2)]
 
 
-def llm_based_evaluation(prompts_to_eval, datasets_to_eval, force_generation=False):
+def llm_based_evaluation(prompts_to_eval, datasets_to_eval, force_generation=False, evaluator_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"):
     
     llm_eval_results = {}
     for name, ds_nd_path in datasets_to_eval.items():
         ds = ds_nd_path[0]
         ds_path = ds_nd_path[1]
-        if os.path.exists(ds_path + '/ds_eval') and not force_generation:
-            print('Loading {} from already saved file'.format(ds_path))
-            llm_eval_results[name] = datasets.load_from_disk(ds_path + '/ds_eval')
+        if os.path.exists(ds_path + '/ds_eval/' + evaluator_name.split('/')[0]) and not force_generation:
+            print('Loading {} from already saved file'.format(ds_path + '/ds_eval/' + evaluator_name.split('/')[0]))
+            llm_eval_results[name] = datasets.load_from_disk(ds_path + '/ds_eval/' + evaluator_name.split('/')[0])
 
         else:
             for eval_prompt in prompts_to_eval:
-                ds = evaluate_communicative_quality(ds, eval_prompt)
+                ds = evaluate_communicative_quality(ds, eval_prompt, evaluator_name=evaluator_name)
             
             llm_eval_results[name] = ds
-            ds.save_to_disk(ds_path + '/ds_eval')
+            ds.save_to_disk(ds_path + '/ds_eval/' + evaluator_name.split('/')[0])
 
     print(tabulate(
         [[name] + get_llm_avg_scores(res, prompts_to_eval) for name, res in llm_eval_results.items()],
