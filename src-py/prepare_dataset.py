@@ -13,18 +13,20 @@ from tqdm import tqdm
 from nltk.tokenize import sent_tokenize
 import nltk
 import re
+import argparse
+
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer, DataCollatorForLanguageModeling, BitsAndBytesConfig
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 from peft import get_peft_model, LoraConfig, TaskType, PeftModel
 from datasets import Dataset
+import datasets
 
 from trl import apply_chat_template
 
 MAX_PAPER_TOKENS = 1000
 MAX_CONV_TOKENS = 1000
-MAX_NUM_TURNS = 40
 # === STEP 1: Extract turns from full conversations ===
 
 def extract_turns(tokenizer, example: Dict, role: str, max_num_turns=40) -> List[Dict]:
@@ -165,3 +167,41 @@ def split_dataset_by_clm(all_data, clm, seed=123):
     })
 
     return dataset
+
+def process_dataset_for_training(tokenizer, dataset_path, output_path, max_num_turns=40):
+    conv_dataset = datasets.load_from_disk(dataset_path)
+    conv_dataset = datasets.Dataset.train_test_split(conv_dataset, test_size=0.1, seed=123)
+
+    train_journalist_dataset = prepare_dataset(tokenizer, conv_dataset['train'], role="Journalist", max_num_turns=max_num_turns)
+    train_researcher_dataset = prepare_dataset(tokenizer, conv_dataset['train'], role="Researcher", max_num_turns=max_num_turns)
+    
+    test_journalist_dataset = prepare_dataset(tokenizer, conv_dataset['test'], role="Journalist", max_num_turns=max_num_turns)
+    test_researcher_dataset = prepare_dataset(tokenizer, conv_dataset['test'], role="Researcher", max_num_turns=max_num_turns)
+
+    train_journalist_dataset = split_dataset_by_clm(train_journalist_dataset, 'paper_id')
+    train_researcher_dataset = split_dataset_by_clm(train_researcher_dataset, 'paper_id')
+
+    train_journalist_dataset.save_to_disk(output_path + '/train_journalist_ds')
+    train_researcher_dataset.save_to_disk(output_path + '/train_researcher_ds')
+    
+    test_journalist_dataset.save_to_disk(output_path + '/test_journalist_ds')
+    test_researcher_dataset.save_to_disk(output_path + '/test_researcher_ds')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+                    prog='prepare conversation data',
+                    description='')
+
+    parser.add_argument('ds_path')
+    parser.add_argument('output_path')
+    parser.add_argument('tokenizer_path')
+    parser.add_argument('--max_num_turns', type=int, default=40)
+
+    args = parser.parse_args()
+
+    
+    # Prepare data from  LLAMA-3
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+    tokenizer.pad_token = tokenizer.eos_token  # for older tokenizers
+    process_dataset_for_training(tokenizer, args.ds_path, args.output_path, max_num_turns=args.max_num_turns)

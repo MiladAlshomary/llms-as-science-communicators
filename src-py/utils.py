@@ -27,7 +27,6 @@ q=BitsAndBytesConfig(load_in_8bit=True)
 #need to set openAI key here
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-
 def count_tokens(tokenizer, text):
         """Helper function to count tokens in text."""
         return len(tokenizer.tokenize(text))
