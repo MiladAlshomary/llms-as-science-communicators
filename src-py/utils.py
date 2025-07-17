@@ -227,6 +227,7 @@ def evaluate_text_similarity(pr_articles, gt_articles):
     }
 
 def parse_conversation(row):
+
     raw_conv = row['conversation']
     if raw_conv is None:
         print('None conversation')
@@ -234,16 +235,35 @@ def parse_conversation(row):
             'parsed_conv': []
         }
 
-    # Remove any </think> tags
-    if '</think>' in raw_conv:
-        raw_conv = raw_conv.split('</think>')[-1]
-    
-    dlg = [utter.split(':') for utter in raw_conv.split('\n\n') if 'Journalist' in utter or 'Researcher' in utter]
-    dlg = [utter for utter in dlg if len(utter) > 1]
-    dlg = [{'text': utter[1].replace("**", ""), 'author': utter[0].replace("**", "")} for utter in dlg]
-    return {
-        'parsed_conv': dlg
+    mapping_authors = {
+        "J": "Journalist",
+        "R": "Researcher",
+        "Journalist": "Journalist",
+        "Researcher":"Researcher",
+        "Journalist (J)": "Journalist",
+        "Researcher (R)": "Researcher"
     }
+
+    try:
+        # Remove any </think> tags
+        if '</think>' in raw_conv:
+            raw_conv = raw_conv.split('</think>')[-1]
+        
+        dlg = [utter.split(':') for utter in raw_conv.split('\n\n') if any(['**Journalist' in utter, '**Researcher' in utter, "**J" in utter, "**R" in utter])]
+        dlg = [utter for utter in dlg if len(utter) > 1]
+        dlg = [{'text': utter[1].replace("**", ""), 'author': utter[0].replace("**", "")} for utter in dlg]
+        dlg = [{'text': utter["text"], 'author': re.sub(r"Researcher .*", "Researcher", utter["author"])} for utter in dlg]
+        dlg = [{'text': utter["text"], 'author': mapping_authors[utter["author"]]} for utter in dlg]
+        return {
+            'parsed_conv': dlg
+        }
+    except:
+        print('Error parsing')
+        print(raw_conv)
+        print('============')
+        return {
+            'parsed_conv': []
+        }
 
 
 def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, paper_title_clm='paper_title', paper_text_clm='paper_text', max_rounds=5, max_input_tokens=1500, max_journalist_turn_tokens=200, max_researcher_turn_tokens=500, journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper.", researcher_prompt = "You are a helpful and expert researcher answering questions about your scientific paper."):
@@ -294,3 +314,16 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
     dataset = dataset.map(lambda row: {'conversation': '\n\n'.join(['{}: {}'.format('Journalist', x['content'].replace('Researcher: ', '').replace('Journalist: ', '')) if x['role'] == 'assistant' else '{}: {}'.format('Researcher', x['content']) for x in row['generated_conversation'][2:]])})
     
     return dataset
+
+if __name__ == "__main__":
+    #base_model_path = 'meta-llama/Meta-Llama-3-8B-Instruct'
+    #adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-researcher-on-deepseek/'
+    #output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-researcher-on-deepseek-full/'
+    
+    base_model_path = 'Qwen/Qwen2.5-7B-Instruct'
+    adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek/'
+    output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek-full/'
+    
+    model, tokenizer = load_model_with_adapter(base_model_path, adapter_name, device_map="cuda:0")
+    model = model.merge_and_unload()
+    model.save_pretrained(output_path)

@@ -36,7 +36,7 @@ models_folder = "/mnt/swordfish-pool2/milad/communicating-science-to-the-public/
 gpt_tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo")
 llama_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B")
 
-def generate_conversations_interactively(ds, output_path, base_model_name, journalist_adapter_name="", researcher_adapter_name=""):
+def generate_conversations_interactively(ds, output_path, journalist_base_model_name, researcher_base_model_name, journalist_adapter_name="", researcher_adapter_name=""):
 
     if researcher_adapter_name == "": # It's baseline generation
         researcher_prompt = """
@@ -67,8 +67,8 @@ def generate_conversations_interactively(ds, output_path, base_model_name, journ
     print(researcher_prompt)
     print(journalist_prompt)
     
-    journalist_model, tokenizer = utils.load_model_with_adapter(base_model_name, journalist_adapter_name, device_map="cuda:0")
-    researcher_model, tokenizer = utils.load_model_with_adapter(base_model_name, researcher_adapter_name, device_map="cuda:1")
+    journalist_model, tokenizer = utils.load_model_with_adapter(journalist_base_model_name, journalist_adapter_name, device_map="cuda:0")
+    researcher_model, tokenizer = utils.load_model_with_adapter(researcher_base_model_name, researcher_adapter_name, device_map="cuda:1")
     journalist_pipeline = pipeline("text-generation", model=journalist_model, tokenizer=tokenizer, batch_size=12)
     researcher_pipeline = pipeline("text-generation", model=researcher_model, tokenizer=tokenizer, batch_size=12)
 
@@ -92,7 +92,8 @@ if __name__ == "__main__":
 
     parser.add_argument('ds_path')
     parser.add_argument('output_path')
-    parser.add_argument('base_model_name')
+    parser.add_argument('--journalist_base_model_name')
+    parser.add_argument('--researcher_base_model_name')
     parser.add_argument('--full_conv', action='store_true', default=False)
     parser.add_argument('--journalist_adapter_name', type=str, default="") 
     parser.add_argument('--researcher_adapter_name', type=str, default="")
@@ -104,4 +105,4 @@ if __name__ == "__main__":
     if args.full_conv:
         generate_full_conversations(sample_dataset, args.output_path, args.base_model_name)
     else:
-        generate_conversations_interactively(sample_dataset, args.output_path, args.base_model_name, journalist_adapter_name=args.journalist_adapter_name, researcher_adapter_name=args.researcher_adapter_name)
+        generate_conversations_interactively(sample_dataset, args.output_path, args.journalist_base_model_name, args.researcher_base_model_name, journalist_adapter_name=args.journalist_adapter_name, researcher_adapter_name=args.researcher_adapter_name)
