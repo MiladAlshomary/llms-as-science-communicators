@@ -264,8 +264,7 @@ def parse_conversation(row):
         return {
             'parsed_conv': []
         }
-
-
+    
 def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, paper_title_clm='paper_title', paper_text_clm='paper_text', max_rounds=5, max_input_tokens=1500, max_journalist_turn_tokens=200, max_researcher_turn_tokens=500, journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper.", researcher_prompt = "You are a helpful and expert researcher answering questions about your scientific paper."):
 
     terminators = [
@@ -315,15 +314,31 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
     
     return dataset
 
+def merge_and_save_model(model_id, output_path):
+    from peft import AutoPeftModelForCausalLM
+    from transformers import AutoTokenizer
+    from safetensors.torch import save_file
+    
+    # Load the PEFT model (which includes the base model and adapter)
+    peft_model = AutoPeftModelForCausalLM.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # Merge the adapter and unload it, resulting in a single model
+    merged_model = peft_model.merge_and_unload()
+    save_file(merged_model.state_dict(), output_path + "/model.safetensors") # This creates a single file
+    #merged_model.save_pretrained(output_path, max_shard_size="20GB")
+    tokenizer.save_pretrained(output_path)
+
+
 if __name__ == "__main__":
-    #base_model_path = 'meta-llama/Meta-Llama-3-8B-Instruct'
-    #adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-researcher-on-deepseek/'
-    #output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-researcher-on-deepseek-full/'
+    base_model_path = 'meta-llama/Meta-Llama-3-8B-Instruct'
+    adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-journalist-on-deepseek/'
+    output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-journalist-on-deepseek-full/'
     
-    base_model_path = 'Qwen/Qwen2.5-7B-Instruct'
-    adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek/'
-    output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek-full/'
-    
-    model, tokenizer = load_model_with_adapter(base_model_path, adapter_name, device_map="cuda:0")
-    model = model.merge_and_unload()
-    model.save_pretrained(output_path)
+    # base_model_path = 'Qwen/Qwen2.5-7B-Instruct'
+    # adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek/'
+    # output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek-full/'
+
+    merge_and_save_model(adapter_name, output_path)
+    #model, tokenizer = load_model_with_adapter(base_model_path, adapter_name, device_map="cuda:0")
+    #model = model.merge_and_unload()
+    #model.save_pretrained(output_path)

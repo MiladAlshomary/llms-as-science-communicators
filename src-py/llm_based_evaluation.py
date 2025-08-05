@@ -62,8 +62,8 @@ def evaluate_communicative_quality(dataset, eval_prompt, evaluator_name):
             #response_format={"type": "json_schema", "json_schema": {"name": eval_prompt['scoring_scheme'], "schema": json_schema}}
             extra_body={"guided_json": json_schema},
         )
-        score = completion.choices[0].message.content
-        #score = completion.choices[0].message.reasoning_content
+        #score = completion.choices[0].message.content
+        score = completion.choices[0].message.reasoning_content
         try:
             eval_scores.append(json.loads(score))           
         except openai.BadRequestError as e:
