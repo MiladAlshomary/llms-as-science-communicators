@@ -16,6 +16,7 @@ bertscore = load("bertscore")
 import numpy as np
 import nltk
 from tqdm import tqdm
+from scipy import stats
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
@@ -314,6 +315,57 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
     
     return dataset
 
+def construct_full_dialogue_from_fixed_questions(dataset, researcher_pipeline, paper_title_clm='paper_title', paper_text_clm='paper_text', max_input_tokens=1500, 
+                                                 max_researcher_turn_tokens=500, 
+                                                 output_clm = 'fixed_journalist_conv',
+                                                 researcher_prompt = "You are a helpful and expert researcher answering questions about your scientific paper."):
+
+    journalist_questions = [
+        'What is the research questions addressed in this paper?',
+        'What is the societal impact of this research?',
+        'How this paper is compared to other research on the topic?'
+    ]
+    
+    terminators = [
+        researcher_pipeline.tokenizer.eos_token_id,
+    ]
+    
+    def generate_response(pipe, messages, batch_size=1, max_new_tokens=100):
+        prompts = [pipe.tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in messages]
+        all_responses = []
+        #print(prompts[0])
+        #print('============================')
+        responses = pipe(
+            prompts,
+            max_new_tokens=max_new_tokens,
+            eos_token_id= terminators,
+            temperature=0.7,
+            top_p=0.9,
+            min_new_tokens=10,
+            batch_size=batch_size,
+            pad_token_id=pipe.tokenizer.eos_token_id
+        )
+        responses = [r[0]['generated_text'][len(prompts[i]):].strip() for i, r in enumerate(responses)]
+        responses = [extract_complete_paragraphs(r) for r in responses]
+
+        return responses
+
+    # Take the first message about the system
+    researcher_generated_conversations = [[{"content": researcher_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPERT-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(researcher_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
+ 
+    for ques in tqdm(journalist_questions):
+        
+        researcher_generated_conversations = [conv + [{'content': ques, "role":"user"}] for conv in researcher_generated_conversations]
+
+        #Researcher response
+        responses = generate_response(researcher_pipeline, researcher_generated_conversations, max_new_tokens=max_researcher_turn_tokens)
+        researcher_generated_conversations = [conv[0] + [{'content': conv[1], "role":"assistant"}] for conv in zip(researcher_generated_conversations, responses)]
+
+    dataset = dataset.add_column(output_clm, researcher_generated_conversations)
+    dataset = dataset.map(lambda row: {output_clm: '\n\n'.join(['{}: {}'.format('Researcher', x['content'].replace('Researcher: ', '').replace('Journalist: ', '')) if x['role'] == 'assistant' else '{}: {}'.format('Journalist', x['content'].replace('Researcher: ', '').replace('Journalist: ', '')) for x in row[output_clm][2:]])})
+    
+    return dataset
+
 def merge_and_save_model(model_id, output_path):
     from peft import AutoPeftModelForCausalLM
     from transformers import AutoTokenizer
@@ -328,11 +380,71 @@ def merge_and_save_model(model_id, output_path):
     #merged_model.save_pretrained(output_path, max_shard_size="20GB")
     tokenizer.save_pretrained(output_path)
 
+def histogram_of_scores(llm_eval_results, scoring_scheme, chart_title):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    llm_eval_scores = {x[0]: [s['score'] for s in x[1][scoring_scheme]] for x in llm_eval_results.items()}
+    # Assuming llm_eval_scores is a dict {model_name: list of scores}
+    bin_edges = np.histogram_bin_edges(np.concatenate(list(llm_eval_scores.values())), bins='auto')
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    bin_width = (bin_edges[1] - bin_edges[0])
+    num_models = len(llm_eval_scores)
+    bar_width = bin_width / num_models
+    
+    for i, (key, val) in enumerate(llm_eval_scores.items()):
+        counts, _ = np.histogram(val, bins=bin_edges)
+        offset = (i - num_models / 2) * bar_width + bar_width / 2
+        plt.bar(bin_centers + offset, counts, width=bar_width, alpha=0.8, label=key)
+    
+    plt.xlabel("Score")
+    plt.ylabel("Count")
+    plt.title(chart_title)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
+def evalaute_convs(datasets):
+    from tabulate import tabulate
+    eval_results = {}
+    for name, ds in datasets.items():
+        eval_results[name] = evaluate_conv(ds['conversation'], None, ds['pr-article'])
+
+    print(tabulate(
+        [[name] + list(eval_res.values())[:3] for name, eval_res in eval_results.items()],
+        headers=['Prompt', 'Rouge-1', 'Rouge-L', 'BERT-f1']
+    ))
+
+def stats_analysis(scores_system_a, scores_system_b):
+    # Perform the paired t-test using ttest_rel
+    #t_statistic, p_value = stats.ttest_rel(scores_system_a, scores_system_b)
+    from scipy.stats import wilcoxon
+
+    # Using the same sample data as before
+    # scores_system_a = ...
+    # scores_system_b = ...
+    
+    t_statistic, p_value = wilcoxon(scores_system_a, scores_system_b)
+
+    # Print the results
+    print(f"Paired T-test Results:")
+    print(f"T-statistic: {t_statistic}")
+    print(f"P-value: {p_value}")
+    
+    # Interpret the results
+    alpha = 0.05 # Commonly used significance level
+    print("\nInterpretation:")
+    if p_value < alpha:
+        print(f"The p-value ({p_value:.4f}) is less than the significance level ({alpha}).")
+        print("Conclusion: There is a statistically significant difference between the two systems.")
+    else:
+        print(f"The p-value ({p_value:.4f}) is greater than the significance level ({alpha}).")
+        print("Conclusion: There is no statistically significant difference between the two systems.")
+        
 if __name__ == "__main__":
     base_model_path = 'meta-llama/Meta-Llama-3-8B-Instruct'
-    adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-journalist-on-deepseek/'
-    output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/llama3-trained-journalist-on-deepseek-full/'
+    adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs/'
+    output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs-full-model/'
     
     # base_model_path = 'Qwen/Qwen2.5-7B-Instruct'
     # adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/qwen-trained-journalist-on-deepseek/'

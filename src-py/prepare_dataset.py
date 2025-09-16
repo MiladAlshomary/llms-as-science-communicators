@@ -56,7 +56,7 @@ def extract_turns(tokenizer, example: Dict, role: str, max_num_turns=40) -> List
             so_far_number_of_tokens+= len(turn_tokens)
                 
             context_lines.append({'role': 'assistant' if turns[j]["author"] == role else 'user', 
-                                  'content': '{}: {}'.format(turns[j]["author"], turn_content)
+                                  'content': '{}'.format(turns[j]["author"], turn_content)
             })
 
         input_prompt = {
@@ -106,7 +106,7 @@ def build_chat_format(tokenizer, example, role="Journalist"):
 
     paper_title = example['paper_title']
     
-    user_prompt = f"[PAPERT-TITLE]\n{paper_title}\n[PAPER]\n{paper}"
+    user_prompt = f"[PAPER-TITLE]\n{paper_title}\n[PAPER]\n{paper}"
 
 
     #new_prompt = [[{'role': 'system', 'content': role_prompt}] + [{'role': 'user', 'content': user_prompt}]] + example['prompt']
@@ -200,8 +200,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    
-    # Prepare data from  LLAMA-3
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     tokenizer.pad_token = tokenizer.eos_token  # for older tokenizers
     process_dataset_for_training(tokenizer, args.ds_path, args.output_path, max_num_turns=args.max_num_turns)

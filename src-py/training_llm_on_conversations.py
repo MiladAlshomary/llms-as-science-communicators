@@ -61,7 +61,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
                 lora_dropout=extra_args.lora_dropout,
                 r=extra_args.lora_rank,
                 bias="none",
-                target_modules=["q_proj", "v_proj"],
+                target_modules=["q_proj", "k_proj", "v_proj"],
                 task_type="CAUSAL_LM",
         )
     else:
@@ -115,10 +115,9 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
     
     trainer = SFTTrainer(
         model,
-        #tokenizer=tokenizer,
         train_dataset=train_ds,
         eval_dataset=valid_ds,
-        formatting_func=lambda example: format_example(example, tokenizer) if extra_args.preprocess_data else None,
+        formatting_func=None,
         args=sft_config
     )
 

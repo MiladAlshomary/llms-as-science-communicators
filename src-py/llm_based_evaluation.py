@@ -19,8 +19,8 @@ from openai.lib._pydantic import to_strict_json_schema
 keys = json.load(open('./keys.json'))
 
 eval_client = OpenAI(base_url="http://localhost:9988/v1", api_key="-")
-#eval_client = OpenAI(api_key=keys['OPENAI_API_KEY'])
-#eval_client = OpenAI(base_url="https://api.anthropic.com/v1/", api_key=keys['ANTHRO-API-KEY'])
+openai_eval_client = OpenAI(api_key=keys['OPENAI_API_KEY'])
+anthro_eval_client = OpenAI(base_url="https://api.anthropic.com/v1/", api_key=keys['ANTHRO-API-KEY'])
 
 
 class ThreePoints(int, Enum):
@@ -46,24 +46,35 @@ class FivePointsScoring(BaseModel):
 
 def evaluate_communicative_quality(dataset, eval_prompt, evaluator_name):
 
-    #json_schema = FivePointsScoring.model_json_schema() if eval_prompt['scoring_scheme'] == '5_points' else ThreePointsScoring.model_json_schema()
     json_schema = to_strict_json_schema(FivePointsScoring) if eval_prompt['scoring_scheme'] == '5_points' else to_strict_json_schema(ThreePointsScoring)
     eval_scores = []
     for row in tqdm(dataset):
         instruction = '{}\n\n{}'.format(eval_prompt['instruction'], '\n\n'.join(["{}: {}".format(input_name, row[input_val]) for input_name, input_val in eval_prompt['inputs'].items()]))
-        completion = eval_client.chat.completions.create(
-            model=evaluator_name,
-            messages=[
-                {
-                    "role": "user",
-                    "content": instruction,
-                }
-            ],
-            #response_format={"type": "json_schema", "json_schema": {"name": eval_prompt['scoring_scheme'], "schema": json_schema}}
-            extra_body={"guided_json": json_schema},
-        )
-        #score = completion.choices[0].message.content
-        score = completion.choices[0].message.reasoning_content
+        if 'gpt' in evaluator_name:        
+            completion = openai_eval_client.chat.completions.create(
+                model=evaluator_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": instruction,
+                    },
+                ],
+                response_format={"type": "json_schema", "json_schema": {"name": eval_prompt['strategy_name'], "schema": json_schema}},
+            )
+            score = completion.choices[0].message.content
+        else:
+            completion = eval_client.chat.completions.create(
+                model=evaluator_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": instruction,
+                    }
+                ],
+                extra_body={"guided_json": json_schema}
+            )
+            score = completion.choices[0].message.reasoning_content
+            
         try:
             eval_scores.append(json.loads(score))           
         except openai.BadRequestError as e:
