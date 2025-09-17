@@ -294,8 +294,8 @@ def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, p
 
     # Take the first message about the system
     # We maintain two lists to address the role alteration
-    journalist_generated_conversations = [[{"content": journalist_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPERT-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(journalist_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
-    researcher_generated_conversations = [[{"content": researcher_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPERT-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(journalist_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
+    journalist_generated_conversations = [[{"content": journalist_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPER-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(journalist_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
+    researcher_generated_conversations = [[{"content": researcher_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPER-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(journalist_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
  
     for i in tqdm(range(max_rounds)):
         #journalist response
@@ -351,7 +351,7 @@ def construct_full_dialogue_from_fixed_questions(dataset, researcher_pipeline, p
         return responses
 
     # Take the first message about the system
-    researcher_generated_conversations = [[{"content": researcher_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPERT-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(researcher_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
+    researcher_generated_conversations = [[{"content": researcher_prompt, "role": "system"}] + [{'role': 'user', 'content': "[PAPER-TITLE]\n{}\n[PAPER]\n{}".format(row[paper_title_clm], truncate_text(researcher_pipeline.tokenizer, row[paper_text_clm], max_input_tokens))}] for row in dataset]
  
     for ques in tqdm(journalist_questions):
         
