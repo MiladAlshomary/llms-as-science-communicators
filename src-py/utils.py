@@ -265,6 +265,29 @@ def parse_conversation(row):
         return {
             'parsed_conv': []
         }
+
+def generate_press_release(dataset, gen_pipeline, instruction, paper_text_clm='paper_text', conv_clm=None, max_input_tokens=1500):
+
+    if conv_clm == None: # baseline generation
+        prompts = [
+            "{}\n\n[PAPER]:{}".format(instruction, row[paper_text_clm]) for row in dataset
+        ]
+    else:
+        prompts = [
+            "{}\n\n[PAPER]:{}\n\n[CONVERSATION]:{}".format(instruction, row[paper_text_clm], row[conv_clm]) for row in dataset
+        ]
+    
+    responses = gen_pipeline(
+        prompts,
+        temperature=0.7,
+        top_p=0.9,
+        min_new_tokens=10,
+        batch_size=1,
+        eos_token_id= [gen_pipeline.tokenizer.eos_token_id],
+        pad_token_id=gen_pipeline.tokenizer.eos_token_id
+    )
+    responses = [r[0]['generated_text'][len(prompts[i]):].strip() for i, r in enumerate(responses)]
+    return responses
     
 def construct_full_dialogue(dataset, journalist_pipeline, researcher_pipeline, paper_title_clm='paper_title', paper_text_clm='paper_text', max_rounds=5, max_input_tokens=1500, max_journalist_turn_tokens=200, max_researcher_turn_tokens=500, journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper.", researcher_prompt = "You are a helpful and expert researcher answering questions about your scientific paper."):
 
@@ -416,14 +439,7 @@ def evalaute_convs(datasets):
     ))
 
 def stats_analysis(scores_system_a, scores_system_b):
-    # Perform the paired t-test using ttest_rel
-    #t_statistic, p_value = stats.ttest_rel(scores_system_a, scores_system_b)
     from scipy.stats import wilcoxon
-
-    # Using the same sample data as before
-    # scores_system_a = ...
-    # scores_system_b = ...
-    
     t_statistic, p_value = wilcoxon(scores_system_a, scores_system_b)
 
     # Print the results
@@ -440,7 +456,7 @@ def stats_analysis(scores_system_a, scores_system_b):
     else:
         print(f"The p-value ({p_value:.4f}) is greater than the significance level ({alpha}).")
         print("Conclusion: There is no statistically significant difference between the two systems.")
-        
+
 if __name__ == "__main__":
     base_model_path = 'meta-llama/Meta-Llama-3-8B-Instruct'
     adapter_name = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs/'
