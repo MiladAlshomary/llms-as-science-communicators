@@ -206,6 +206,74 @@ relevancy_eval_prompt = {
     "scoring_scheme": "5_points"
 }
 
+######################### Journalist specific Eval Prompts ###########################
+
+journalist_societal_context_eval_prompt = {
+    "strategy_name": "journalist_societal_context_eval_prompt",
+    "instruction": """
+        Your job is to evaluate the quality of a conversation between a Journalist and a Researcher, by identifying the questions that discuss the societal impact of the research.
+
+        Societal impact refers to the changes that occur in people, communities, and/or environments outside of academia as a result of the research process or findings. These impacts can include conceptual changes, such as new perspectives on socio-ecological challenges, as well as instrumental and capacity-building changes that lead to longer-term social and environmental impacts over time. Stakeholder engagement plays a significant role in driving these societal impacts.
+
+        An example of these questions would be asking about:
+            - how the research impacts society
+            - real-world application benefits from this research
+            - how the work improves human wellbeing
+            - the negative impact of this research or any risk it carries
+            - ethical concerns emerging from the research
+            
+        Return the questions that discuss the societal impact in the following output format:
+            {"high_quality_questions": []}
+    """,
+    "inputs" : {
+        "Conversation": "conversation"
+    },
+}
+
+journalist_scientific_context_eval_prompt = {
+    "strategy_name": "journalist_scientific_context_eval_prompt",
+    "instruction": """
+        Your job is to evaluate the quality of a conversation between a Journalist and a Researcher, by identifying the questions that discuss the scientific context of the research
+
+        Scientific context puts the scientific paper in a proper context with respect to any other research on the same topic, highlighting the novelty.
+
+        An example of these questions would be asking about:
+            - related research on the same topic
+            - how different or novel this research is in comparison to previous work
+            - How does this research help other scientific research progress on this topic
+
+  
+        Return the questions that discuss the scientific context of the research in the following output format:
+            {"high_quality_questions": []}
+        
+    """,
+    "inputs" : {
+        "Conversation": "conversation"
+    },
+}
+
+journalist_clarity_eval_prompt = {
+    "strategy_name": "journalist_clarity_eval_prompt",
+    "instruction": """
+        Your job is to evaluate the quality of a conversation between a Journalist and a Researcher, by identifying the questions that ask the researcher to clarify complicated concepts
+
+        An example of these questions would be asking:
+            - to clarify complex technical concepts that are left unexplained
+            - to provide examples, analogies, or use descriptive language to understand the work
+            - to provide background information that makes it easy to understand the work
+
+        
+
+        Return the questions that ask for clarification in the following output format:
+            {"high_quality_questions": []}
+        
+    """,
+    "inputs" : {
+        "Conversation": "conversation",
+    },
+}
+
+
 ######################### Press Release Eval Prompts #################################
 
 pr_factuality_eval_prompt = {

@@ -276,13 +276,14 @@ def generate_press_release(dataset, gen_pipeline, instruction, paper_text_clm='p
         prompts = [
             "{}\n\n[PAPER]:{}\n\n[CONVERSATION]:{}".format(instruction, row[paper_text_clm], row[conv_clm]) for row in dataset
         ]
-    
+
+    print(prompts[0])
     responses = gen_pipeline(
         prompts,
         temperature=0.7,
         top_p=0.9,
         min_new_tokens=10,
-        batch_size=1,
+        batch_size=10,
         eos_token_id= [gen_pipeline.tokenizer.eos_token_id],
         pad_token_id=gen_pipeline.tokenizer.eos_token_id
     )
@@ -408,6 +409,7 @@ def histogram_of_scores(llm_eval_results, scoring_scheme, chart_title):
     import numpy as np
     
     llm_eval_scores = {x[0]: [s['score'] for s in x[1][scoring_scheme]] for x in llm_eval_results.items()}
+    print(llm_eval_scores)
     # Assuming llm_eval_scores is a dict {model_name: list of scores}
     bin_edges = np.histogram_bin_edges(np.concatenate(list(llm_eval_scores.values())), bins='auto')
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
