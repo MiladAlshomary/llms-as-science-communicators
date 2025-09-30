@@ -30,7 +30,8 @@ q=BitsAndBytesConfig(load_in_8bit=True)
 # llama3 = ParallelLLM(HFTransformers("meta-llama/Meta-Llama-3-8B-Instruct", device=0, quantization_config=q, dtype=torch.bfloat16), 
 #                      HFTransformers("meta-llama/Meta-Llama-3-8B-Instruct", device=1, quantization_config=q, dtype=torch.bfloat16))
 
-deepseek_r1 = OpenAI(model_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", api_key='', base_url="http://localhost:9988/v1")
+#deepseek_r1 = OpenAI(model_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", api_key='', base_url="http://localhost:9988/v1")
+deepseek_r1 = OpenAI(model_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", api_key='', base_url="http://localhost:9988/v1")
 
 llama3 = OpenAI(model_name="meta-llama/Meta-Llama-3-8B-Instruct", api_key='', base_url="http://localhost:9977/v1")
 

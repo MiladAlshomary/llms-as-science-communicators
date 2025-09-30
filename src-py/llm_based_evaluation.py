@@ -127,8 +127,8 @@ def evaluate_conv_questions(dataset, eval_prompt, evaluator_name):
 
     eval_scores = []
     for row in tqdm(dataset):
-        all_questions = extract_questions(row['conversation'])
-        #instruction = '{}\n\n{}'.format(eval_prompt['instruction'], '\n\n'.join(["{}: {}".format(input_name, row[input_val]) for input_name, input_val in eval_prompt['inputs'].items()]))
+        journalist_utters = [x['content'] for x in row['generated_conversation'] if x['role'] == 'assistant' ]
+        all_questions = extract_questions('\n\n'.join(journalist_utters))
         instruction = '{}\n\n{}'.format(eval_prompt['instruction'], "Questions:\n\n{}".format("\n".join(all_questions)))
         #print(instruction)
         if 'gpt' in evaluator_name:        
@@ -162,20 +162,20 @@ def evaluate_conv_questions(dataset, eval_prompt, evaluator_name):
             eval_scores.append({'reasons': {'good_questions': good_questions, 'all_questions': all_questions}, 'score':score})           
         except openai.BadRequestError as e:
             print(f"BadRequestError: {e}")  # Log the error message
-            eval_scores.append({'reasons':'no reason', 'score':0})
+            eval_scores.append({'reasons': {'good_questions': [], 'all_questions': all_questions}, 'score':0})
         except OpenAIError as e:
             print(f"OpenAI API Error: {e}")  # Catch all OpenAI-related errors
-            eval_scores.append({'reasons':'no reason', 'score':0})
+            eval_scores.append({'reasons': {'good_questions': [], 'all_questions': all_questions}, 'score':0})
         except Exception as e:
             print(f"Unexpected error: {e}")  # Catch any other unexpected errors
-            eval_scores.append({'reasons':'no reason', 'score':0})
+            eval_scores.append({'reasons': {'good_questions': [], 'all_questions': all_questions}, 'score':0})
 
     dataset = dataset.add_column('{}_scoring_parsed'.format(eval_prompt['strategy_name']), eval_scores)
     return dataset
     
 def get_llm_avg_scores(llm_eval, prompts_to_eval):
     scoring_matrix = np.array([[item['{}_scoring_parsed'.format(prompt['strategy_name'])]['score'] for prompt in prompts_to_eval if '{}_scoring_parsed'.format(prompt['strategy_name']) in item]
-                     for item in llm_eval]).astype(int)
+                     for item in llm_eval]).astype(float)
     
     scoring_matrix[scoring_matrix == None] = 0.00
     avg_scoring = np.mean(scoring_matrix, axis=0).astype(float)

@@ -86,6 +86,8 @@ def generate_conversations_interactively(ds, output_path, journalist_base_model_
             
             Ask a single new question or a follow-up question on the conversation.
         """
+        #journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper."
+        
     else:
         journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper."
         # journalist_prompt = """

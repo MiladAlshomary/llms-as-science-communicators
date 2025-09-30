@@ -2,12 +2,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
 base_model  = 'meta-llama/Meta-Llama-3-8B-Instruct'
-lora_path   = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs/'
-output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs-full-model/'
+lora_path   = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs-final/'
+output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-llama3-trained-journalist-on-deepseek-3epochs-final-full-model/'
 
-base_model  = 'Qwen/Qwen2.5-7B-Instruct'
-lora_path   = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-qwen-trained-journalist-on-deepseek-3epochs-high-capacity/'
-output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-qwen-trained-journalist-on-deepseek-3epochs-full-model/'
+# base_model  = 'Qwen/Qwen2.5-7B-Instruct'
+# lora_path   = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-qwen-trained-journalist-on-deepseek-3epochs-high-capacity/'
+# output_path = '/mnt/swordfish-pool2/milad/communicating-science-to-the-public/models/new-qwen-trained-journalist-on-deepseek-3epochs-full-model/'
 
 
 # Load base + LoRA
