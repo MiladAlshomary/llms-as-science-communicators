@@ -62,7 +62,7 @@ def train_model(args):
     model = get_peft_model(model, lora_config)
 
     # Load dataset
-    ds = load_dataset("json", data_files={"train": args.dataset_path})["train"]
+    ds = load_dataset(args.dataset_path)
     ds = ds.map(lambda x: tokenize_dpo_pair(x, tokenizer))
 
     # DPO config & trainer
