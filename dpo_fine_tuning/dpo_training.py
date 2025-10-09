@@ -18,6 +18,25 @@ def tokenize_pair(example, tokenizer):
     }
     return ex
 
+# tokenization helper for DPO: TRL needs prompt + chosen/rejected tokenized
+def tokenize_dpo_pair(example, tokenizer):
+    """
+    Tokenizes a DPO pair. The prompt is a list of dicts representing a conversation.
+    The chosen and rejected responses are strings.
+    """
+    prompt = example["prompt"]
+    chosen = example["chosen"]
+    rejected = example["rejected"]
+
+    # Apply chat template to the prompt, which is a conversation history
+    prompt_tokens = tokenizer.apply_chat_template(prompt, tokenize=True, add_generation_prompt=True)
+
+    return {
+      "prompt": torch.tensor(prompt_tokens),
+      "chosen": tokenizer(chosen, add_special_tokens=False).input_ids,
+      "rejected": tokenizer(rejected, add_special_tokens=False).input_ids,
+    }
+
 def train_model(args):
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=False)
@@ -44,7 +63,7 @@ def train_model(args):
 
     # Load dataset
     ds = load_dataset("json", data_files={"train": args.dataset_path})["train"]
-    ds = ds.map(lambda x: tokenize_pair(x, tokenizer))
+    ds = ds.map(lambda x: tokenize_dpo_pair(x, tokenizer))
 
     # DPO config & trainer
     dpo_config = DPOConfig(
