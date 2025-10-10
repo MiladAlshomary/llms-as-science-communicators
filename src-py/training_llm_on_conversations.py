@@ -2,12 +2,12 @@ import os
 import sys
 import re
 
-os.environ['TRANSFORMERS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
+os.environ['HF_HOME'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ['HF_DATASETS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ["WANDB_DIR"] = '/mnt/swordfish-pool2/milad/wandb-dir'
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-os.environ['TORCH_USE_CUDA_DSA']='1'
 sys.path.append('./src-py')
+
+print(">>> TORCH_DIST_TIMEOUT in env:", os.environ.get("TORCH_DIST_TIMEOUT"))
 
 import datasets
 import json
@@ -39,43 +39,40 @@ huggingface_token = keys['hf_token']
 
 login(huggingface_token)
 
+from datetime import timedelta
+import torch.distributed as dist
+
+# # only the main process of each rank should run this block once
+if not dist.is_initialized():
+    dist.init_process_group(
+        backend="gloo",
+        timeout=timedelta(seconds=3600)  # 1 hour
+    )
+    
 def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eval_steps=200, max_length=2500, num_train_epochs=3, resume_from_checkpoint=False, extra_args=None):
 
     print(extra_args)
     print('=====================')
     # Shuffle the training set
     #train_ds = train_ds.shuffle().select(range(40000))
-    train_ds = train_ds.shuffle()
+    train_ds = train_ds.shuffle().select(range(1000))
     valid_ds = valid_ds.select(range(5000))
     #save the dataset we trained on
 
-    if args.preprocess_data:
-        train_ds = train_ds.map(lambda row: {'norm_prompt': normalize_chat_roles(row['prompt'])})
-        valid_ds = valid_ds.map(lambda row: {'norm_prompt': normalize_chat_roles(row['prompt'])})
     
     wandb.init(project="training-llama-on-conversations", name=run_name)
 
-    if 'qwen' in run_name:
-        peft_config = LoraConfig(
-                lora_alpha=extra_args.lora_alpha,
-                lora_dropout=extra_args.lora_dropout,
-                r=extra_args.lora_rank,
-                bias="none",
-                target_modules=["q_proj", "k_proj", "v_proj"],
-                task_type="CAUSAL_LM",
-        )
-    else:
-        peft_config = LoraConfig(
-                lora_alpha=extra_args.lora_alpha,
-                lora_dropout=extra_args.lora_dropout,
-                r=extra_args.lora_rank,
-                bias="none",
-                target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-                task_type="CAUSAL_LM",
-        )
+    peft_config = LoraConfig(
+            lora_alpha=extra_args.lora_alpha,
+            lora_dropout=extra_args.lora_dropout,
+            r=extra_args.lora_rank,
+            bias="none",
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+            task_type="CAUSAL_LM",
+    )
     
     model = get_peft_model(model, peft_config)
-    model.gradient_checkpointing_enable()
+    #model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     
     print(model.print_trainable_parameters())
@@ -87,7 +84,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
         per_device_train_batch_size=extra_args.batch_size,
         resume_from_checkpoint=resume_from_checkpoint,
         gradient_accumulation_steps=extra_args.gradient_accumulation_steps,
-        gradient_checkpointing=True,
+        #gradient_checkpointing=True,
         optim="adamw_torch_fused",
         neftune_noise_alpha=5,
         logging_steps=5,
@@ -148,52 +145,6 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
     #model.push_to_hub("miladalsh/conv-ft-llama3")
     #tokenizer.push_to_hub("miladalsh/conv-ft-llama3")
 
-def format_example(example, tokenizer):
-    prompt_messages = example["prompt"]
-    completion_messages = example["completion"]
-
-    # Optional: assertions to debug input structure
-    assert prompt_messages[0]["role"] == "system"
-    assert prompt_messages[1]["role"] == "user"
-    assert completion_messages[-1]["role"] == "assistant"
-    assert all(
-        prompt_messages[i]["role"] != prompt_messages[i+1]["role"]
-        for i in range(len(prompt_messages)-1)
-    ), f"Non-alternating roles in: {[m['role'] for m in prompt_messages]}"
-
-    # Combine prompt and completion
-    full_messages = prompt_messages + completion_messages
-
-    # Apply chat template
-    prompt_text = tokenizer.apply_chat_template(prompt_messages, tokenize=False)
-    full_text = tokenizer.apply_chat_template(full_messages, tokenize=False)
-
-    # Tokenize
-    full_tokens = tokenizer(full_text, return_tensors="pt", padding=False, truncation=True)
-    prompt_tokens = tokenizer(prompt_text, return_tensors="pt", padding=False, truncation=True)
-
-    input_ids = full_tokens["input_ids"][0]
-    labels = input_ids.clone()
-
-    # Mask prompt tokens
-    labels[:prompt_tokens["input_ids"].shape[1]] = -100
-
-    return {
-        "input_ids": input_ids,
-        "labels": labels,
-    }
-
-def normalize_chat_roles(messages):
-    if not messages:
-        return messages
-
-    normalized = [messages[0]]
-    for msg in messages[1:]:
-        if msg["role"] == normalized[-1]["role"]:
-            normalized[-1]["content"] += "\n" + msg["content"]
-        else:
-            normalized.append(msg)
-    return normalized
 
 def train_main(conv_ds_path, output_path, model_name, run_name, num_epochs, resume_from_checkpoint, extra_args):
     conv_ds = datasets.load_from_disk(conv_ds_path)
@@ -202,13 +153,18 @@ def train_main(conv_ds_path, output_path, model_name, run_name, num_epochs, resu
         load_in_4bit=True, bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16
     )
 
-        
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    device = torch.device(f"cuda:{local_rank}")
+    print(f">>>>>>>>>>>>[rank {local_rank}] Using device {device}")
+    torch.cuda.set_device(device)
+    
     model = AutoModelForCausalLM.from_pretrained(model_name,
                                                  token=huggingface_token,
-                                                 device_map="auto",
+                                                 #device_map={"": local_rank},  # each process gets its GPU
+                                                 #device_map="auto",
                                                  attn_implementation="flash_attention_2" if extra_args.use_flash_attention_2 else None,
                                                  torch_dtype=torch.bfloat16,
-                                                 quantization_config=bnb_config)
+                                                 quantization_config=bnb_config).to(device)
 
     
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=huggingface_token)
@@ -238,6 +194,8 @@ if __name__ == "__main__":
                     prog='training conversational model',
                     description='')
 
+    os.environ.setdefault("TORCH_DISTRIBUTED_DEBUG", "DETAIL")
+    
     parser.add_argument('action')           # positional argument
     parser.add_argument('conv_ds_path')      # option that takes a value
     parser.add_argument('output_path') 

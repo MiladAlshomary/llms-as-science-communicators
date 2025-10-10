@@ -6,19 +6,7 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from datasets import load_dataset
 import torch
 
-# tokenization helper for DPO: TRL needs prompt + chosen/rejected tokenized
-def tokenize_pair(example, tokenizer):
-    prompt = example["prompt"]
-    chosen = example["chosen"]
-    rejected = example["rejected"]
-    ex = {
-      "input_ids": tokenizer(prompt, return_tensors="pt").input_ids[0],
-      "chosen": tokenizer(chosen, return_tensors="pt").input_ids[0],
-      "rejected": tokenizer(rejected, return_tensors="pt").input_ids[0],
-    }
-    return ex
 
-# tokenization helper for DPO: TRL needs prompt + chosen/rejected tokenized
 def tokenize_dpo_pair(example, tokenizer):
     """
     Tokenizes a DPO pair. The prompt is a list of dicts representing a conversation.
@@ -63,7 +51,8 @@ def train_model(args):
 
     # Load dataset
     ds = load_dataset(args.dataset_path)
-    ds = ds.map(lambda x: tokenize_dpo_pair(x, tokenizer))
+    ds = ds.remove_columns(['paper_id', 'paper_title', 'paper_text', 'completion', 'answer_quality'])
+    ds = ds.map(lambda x: {'prompt': tokenizer.apply_chat_template(x['prompt'], tokenize=False, add_generation_prompt=True)})
 
     # DPO config & trainer
     dpo_config = DPOConfig(
@@ -84,8 +73,8 @@ def train_model(args):
     trainer = DPOTrainer(
         model=model,
         ref_model=None, # No separate reference model
-        train_dataset=ds,
-        tokenizer=tokenizer,
+        train_dataset=ds['train'],
+        processing_class=tokenizer,
         peft_config=lora_config,
         args=dpo_config,
     )
