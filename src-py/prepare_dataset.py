@@ -54,10 +54,8 @@ def extract_turns(tokenizer, example: Dict, role: str, max_num_turns=40) -> List
                 continue
                 
             so_far_number_of_tokens+= len(turn_tokens)
-                
             context_lines.append({'role': 'assistant' if turns[j]["author"] == role else 'user', 
-                                  'content': '{}'.format(turns[j]["author"], turn_content)
-            })
+                                  'content': turn_content.strip()})
 
         input_prompt = {
             "paper_id": example['id'],
@@ -65,8 +63,9 @@ def extract_turns(tokenizer, example: Dict, role: str, max_num_turns=40) -> List
             "paper_text": paper,
             "prompt": list(reversed(context_lines)),
             "completion": [{'role': 'assistant', 
-                            'content': '{}: {}'.format(turns[i+1]["author"],re.sub(pattern, '[name]', turns[i+1]['text']))}]
+                            'content': re.sub(pattern, '[name]', turns[i+1]['text']).strip()}]
         }
+        
         examples.append(input_prompt)
     return examples
 

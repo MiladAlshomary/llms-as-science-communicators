@@ -90,14 +90,7 @@ def generate_conversations_interactively(ds, output_path, journalist_base_model_
         
     else:
         journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper."
-        # journalist_prompt = """
-        #     You are a helpful and knowledgeable journalist asking questions about a scientific paper. 
-        #     1. Your questions encourage the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
-        #     2. Your questions focus on topics in the paper that are novel and have unexpected results.
-        #     3. Your questions follow up on the researcher's answers, trying to clarify unexplained technical terms in everyday language.
-            
-        #     Ask a single new question or a follow-up question on the conversation.
-        # """
+
     print(researcher_prompt)
     print(journalist_prompt)
 
