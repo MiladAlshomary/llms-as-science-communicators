@@ -67,12 +67,16 @@ def generate_questions(paper: str, conversation_history: List[Dict[str, str]], l
         A dictionary containing the 'chosen' (preferred) and 'rejected' questions.
     """
     # Construct a prompt to generate a good follow-up question
-    follow_up_instruction = "You are a smart research journalist. Based on the paper and conversation, the last answer from the researcher was evaluated as follows:\n"
     if last_answer_eval['is_vague'] == BinaryDecision.Yes:
+        follow_up_instruction = "You are a smart research journalist. Based on the paper and conversation, the last answer from the researcher was evaluated as follows:\n"
         follow_up_instruction += "- The answer was vague.\n"
+        follow_up_instruction += "\nYour task is to ask a single, concise follow-up question to address these points, seeking clarification and more depth. Do not be conversational, just output the question."
     if last_answer_eval['complex_aspects']:
+        follow_up_instruction = "You are a smart research journalist. Based on the paper and conversation, the last answer from the researcher was evaluated as follows:\n"
         follow_up_instruction += f"- The answer contained these complex aspects that need clarification: {', '.join(last_answer_eval['complex_aspects'])}.\n"
-    follow_up_instruction += "\nYour task is to ask a single, concise follow-up question to address these points, seeking clarification and more depth. Do not be conversational, just output the question."
+        follow_up_instruction += "\nYour task is to ask a single, concise follow-up question to address these points, seeking clarification and more depth. Do not be conversational, just output the question."
+    else:
+        follow_up_instruction = "You are a smart research journalist. The last answer was clear. Now, ask a question about the societal impact of the research paper. Do not be conversational, just output the question."
 
     # Construct a prompt to generate a generic, less-optimal question
     generic_instruction = "You are a research journalist. Based on the paper and conversation, ask a new, generic question about the research. The question should not be a direct follow-up to the last answer. Do not be conversational, just output the question."
@@ -138,47 +142,45 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
             "answer_quality": None
         }
 
-    last_answer = conversation_history[-1]['content']
-
-    # 1. Evaluate the last answer for vagueness and complexity
-    eval_prompt = """
-    Please evaluate the following text from a researcher. 
-    Identify the following:
-     1. If the answer is vague and omitting important details.
-     2. List of concepts that are highly technical that only an expert in the filed would understand. The list can be empty if the answer is not complex.
-    """
-    instruction = f"{eval_prompt}\n\n[TEXT]: {last_answer}"
-
-    completion = eval_client.chat.completions.create(
-        model=evaluator_model,
-        messages=[{"role": "user", "content": instruction}],
-        response_format={"type": "json_schema", "json_schema": {"name": "eval_scheme", "schema": to_strict_json_schema(EvalSchema)}},
-        temperature=0.0,
-    )
-    last_answer_eval = json.loads(completion.choices[0].message.reasoning_content)
-
-    # 2. If the answer is vague or has complex parts, generate preference pair
-    if last_answer_eval['is_vague'] == BinaryDecision.Yes or last_answer_eval['complex_aspects']:
-        print("Last answer is vague or complex. Generating preference pair...")
-
-        # 3. Generate a preferred (follow-up) and rejected (generic) question
-        result = generate_questions(paper, conversation_history, last_answer_eval, generator_model)
-
-        # 4. Format for DPO
-        #dpo_prompt = conversation_history # The prompt is the history up to the point of asking the new question
-        print(result)
-        return {
-            "chosen": result['chosen'],
-            "rejected": result['rejected'],
-            "answer_quality": last_answer_eval
-        }
-    else:
-        print("Last answer is clear. No preference data generated.")
+    try:
+        last_answer = conversation_history[-1]['content']
+    
+        # 1. Evaluate the last answer for vagueness and complexity
+        eval_prompt = """
+        Please evaluate the following text from a researcher. 
+        Identify the following:
+         1. If the answer is vague and omitting important details.
+         2. List of concepts that are highly technical that only an expert in the filed would understand. The list can be empty if the answer is not complex.
+        """
+        instruction = f"{eval_prompt}\n\n[TEXT]: {last_answer}"
+    
+        completion = eval_client.chat.completions.create(
+            model=evaluator_model,
+            messages=[{"role": "user", "content": instruction}],
+            response_format={"type": "json_schema", "json_schema": {"name": "eval_scheme", "schema": to_strict_json_schema(EvalSchema)}},
+            temperature=0.0,
+        )
+        last_answer_eval = json.loads(completion.choices[0].message.reasoning_content)
+    except:
         return {
             "chosen": None,
             "rejected": None,
-            "answer_quality": last_answer_eval
+            "answer_quality": None
         }
+
+    # 2. If the answer is vague or has complex parts, generate preference pair
+    if last_answer_eval['is_vague'] == BinaryDecision.Yes or last_answer_eval['complex_aspects']:
+        print("Last answer is vague or complex. Generating preference pair for clarification...")
+    else:
+        print("Last answer is clear. Generating preference pair for societal impact.")
+
+    result = generate_questions(paper, conversation_history, last_answer_eval, generator_model)
+    print(result)
+    return {
+        "chosen": result['chosen'],
+        "rejected": result['rejected'],
+        "answer_quality": last_answer_eval
+    }
 
 
 def main(args):
