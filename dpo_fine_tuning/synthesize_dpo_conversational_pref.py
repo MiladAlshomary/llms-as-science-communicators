@@ -113,7 +113,7 @@ def generate_questions(paper: str, conversation_history: List[Dict[str, str]], l
     return {"prompt": content_prompt, "chosen": chosen_question, "rejected": rejected_question}
 
 
-def generate_journalist_preference_data(paper: str, conversation_history: List[Dict[str, str]], evaluator_model: str, generator_model: str) -> Optional[Dict[str, Any]]:
+def generate_journalist_preference_data(row: Dict[str, Any], evaluator_model: str, generator_model: str) -> Optional[Dict[str, Any]]:
     """
     This will generate preference data for a given paper and its conversation_history.
     The code will test if the last utterance in the conversation history is vague or complex, and if so,
@@ -121,8 +121,7 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
 
     Args:
         paper: The scientific paper text.
-        conversation_history: The history of the conversation.
-        evaluator_model: The model to evaluate the researcher's answer.
+        row: A dictionary containing the data for a single sample.
         generator_model: The model to generate the questions.
 
     Returns:
@@ -130,6 +129,9 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
     """
 
     #print(paper)
+    paper = row['prompt'][1]['content'].split('[PAPER]')[-1]
+    conversation_history = row['prompt'][2:]
+
     #print(conversation_history[-1])
 
     #print(conversation_history)
@@ -142,32 +144,35 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
             "answer_quality": None
         }
 
-    try:
-        last_answer = conversation_history[-1]['content']
-    
-        # 1. Evaluate the last answer for vagueness and complexity
-        eval_prompt = """
-        Please evaluate the following text from a researcher. 
-        Identify the following:
-         1. If the answer is vague and omitting important details.
-         2. List of concepts that are highly technical that only an expert in the filed would understand. The list can be empty if the answer is not complex.
-        """
-        instruction = f"{eval_prompt}\n\n[TEXT]: {last_answer}"
-    
-        completion = eval_client.chat.completions.create(
-            model=evaluator_model,
-            messages=[{"role": "user", "content": instruction}],
-            response_format={"type": "json_schema", "json_schema": {"name": "eval_scheme", "schema": to_strict_json_schema(EvalSchema)}},
-            temperature=0.0,
-        )
-        last_answer_eval = json.loads(completion.choices[0].message.content)
-    except:
-        print('Exception, skipping')
-        return {
-            "chosen": None,
-            "rejected": None,
-            "answer_quality": None
+    if 'is_vague' in row and 'complex_aspects' in row:
+        print("Found existing evaluation fields. Skipping evaluation.")
+        last_answer_eval = {
+            'is_vague': row['is_vague'],
+            'complex_aspects': row['complex_aspects']
         }
+    else:
+        try:
+            last_answer = conversation_history[-1]['content']
+        
+            # 1. Evaluate the last answer for vagueness and complexity
+            eval_prompt = """
+            Please evaluate the following text from a researcher. 
+            Identify the following:
+             1. If the answer is vague and omitting important details.
+             2. List of concepts that are highly technical that only an expert in the filed would understand. The list can be empty if the answer is not complex.
+            """
+            instruction = f"{eval_prompt}\n\n[TEXT]: {last_answer}"
+        
+            completion = eval_client.chat.completions.create(
+                model=evaluator_model,
+                messages=[{"role": "user", "content": instruction}],
+                response_format={"type": "json_schema", "json_schema": {"name": "eval_scheme", "schema": to_strict_json_schema(EvalSchema)}},
+                temperature=0.0,
+            )
+            last_answer_eval = json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            print(f'Exception during evaluation, skipping: {e}')
+            return { "chosen": None, "rejected": None, "answer_quality": None }
 
     # 2. If the answer is vague or has complex parts, generate preference pair
     if last_answer_eval['is_vague'] == BinaryDecision.Yes or last_answer_eval['complex_aspects']:
@@ -186,9 +191,7 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
 def main(args):
 
     dataset = datasets.load_dataset(args.dataset_name, split=args.dataset_split).select(range(args.num_samples))
-    dataset = dataset.map(lambda row:
-        generate_journalist_preference_data(row['prompt'][1]['content'].split('[PAPER]')[-1], row['prompt'][2:], 
-                                            args.evaluator_model,
+    dataset = dataset.map(lambda row: generate_journalist_preference_data(row, args.evaluator_model,
                                             args.generator_model))
     dataset = dataset.filter(lambda row: row['chosen'] is not None)
     dataset.save_to_disk(args.output_dir)
