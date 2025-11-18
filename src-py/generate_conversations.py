@@ -6,7 +6,7 @@ os.environ['TRANSFORMERS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache-new'
 os.environ['HF_DATASETS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache-new'
 sys.path.append('../src-py')
 
-keys = json.load(open('/local/nlp/milad/code/llms-as-science-communicators/keys.json'))
+keys = json.load(open('/mnt/swordfish-pool2/milad/code/llms-as-science-communicators/keys.json'))
 for key, val in keys.items():
     os.environ[key] = val
 
@@ -78,13 +78,21 @@ def generate_conversations_interactively(ds, output_path, journalist_base_model_
 
     
     if journalist_adapter_name == "":
+        # journalist_prompt = """
+        #     You are a helpful and knowledgeable journalist asking questions about a scientific paper. 
+        #     1. Your questions encourage the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
+        #     2. Your questions focus on topics in the paper that are novel and have unexpected results.
+        #     3. Your questions follow up on the researcher's answers, trying to clarify unexplained technical terms in everyday language.
+            
+        #     Ask a single new question or a follow-up question on the conversation.
+        # """
         journalist_prompt = """
-            You are a helpful and knowledgeable journalist asking questions about a scientific paper. 
+            You are a helpful and knowledgeable journalist asking questions about a scientific paper.
             1. Your questions encourage the researcher to place their paper in a proper societal and scientific context to the greatest possible degree.
             2. Your questions focus on topics in the paper that are novel and have unexpected results.
             3. Your questions follow up on the researcher's answers, trying to clarify unexplained technical terms in everyday language.
             
-            Ask a single new question or a follow-up question on the conversation.
+            Ask a single new question or a follow-up question on the conversation. Be concise with your response. 
         """
         #journalist_prompt="You are a helpful and knowledgeable journalist asking questions about a scientific paper."
         
@@ -132,6 +140,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    os.makedirs(args.output_path, exist_ok=True)
+    json.dump(vars(args), open(args.output_path + '/' + 'command_args.json', 'w'))
+    
     sample_dataset = datasets.load_from_disk(args.ds_path)
 
     if args.fixed_questions:

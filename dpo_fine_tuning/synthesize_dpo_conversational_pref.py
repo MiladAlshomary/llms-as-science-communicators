@@ -160,8 +160,9 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
             response_format={"type": "json_schema", "json_schema": {"name": "eval_scheme", "schema": to_strict_json_schema(EvalSchema)}},
             temperature=0.0,
         )
-        last_answer_eval = json.loads(completion.choices[0].message.reasoning_content)
+        last_answer_eval = json.loads(completion.choices[0].message.content)
     except:
+        print('Exception, skipping')
         return {
             "chosen": None,
             "rejected": None,
@@ -175,7 +176,6 @@ def generate_journalist_preference_data(paper: str, conversation_history: List[D
         print("Last answer is clear. Generating preference pair for societal impact.")
 
     result = generate_questions(paper, conversation_history, last_answer_eval, generator_model)
-    print(result)
     return {
         "chosen": result['chosen'],
         "rejected": result['rejected'],

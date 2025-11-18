@@ -16,6 +16,8 @@ import json
 from tqdm import tqdm
 from openai.lib._pydantic import to_strict_json_schema
 import re
+from scipy.stats import hmean
+
 
 keys = json.load(open('./keys.json'))
 
@@ -180,7 +182,7 @@ def get_llm_avg_scores(llm_eval, prompts_to_eval):
     scoring_matrix[scoring_matrix == None] = 0.00
     avg_scoring = np.mean(scoring_matrix, axis=0).astype(float)
     avg_scoring = np.around(avg_scoring, 2)
-    return list(avg_scoring) + [round(np.mean(avg_scoring), 2)]
+    return list(avg_scoring) + [round(hmean(avg_scoring), 2)]
 
 
 def llm_based_evaluation(prompts_to_eval, datasets_to_eval, force_generation=False, evaluator_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", eval_conv_questions=False):
@@ -191,7 +193,7 @@ def llm_based_evaluation(prompts_to_eval, datasets_to_eval, force_generation=Fal
         ds_path = ds_nd_path[1]
         ds_path = ds_path + '/ds_eval/' + evaluator_name.split('/')[0] if eval_conv_questions == False else ds_path + '/ds_journalist_eval/' + evaluator_name.split('/')[0]
         if os.path.exists(ds_path) and not force_generation:
-            print('Loading {} from already saved file'.format(ds_path))
+            print('Loading {} from already saved file'.format(ds_path.split('/')[-1]))
             llm_eval_results[name] = datasets.load_from_disk(ds_path)
         else:
             for eval_prompt in prompts_to_eval:

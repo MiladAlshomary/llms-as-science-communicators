@@ -43,11 +43,11 @@ from datetime import timedelta
 import torch.distributed as dist
 
 # # only the main process of each rank should run this block once
-if not dist.is_initialized():
-    dist.init_process_group(
-        backend="gloo",
-        timeout=timedelta(seconds=3600)  # 1 hour
-    )
+# if not dist.is_initialized():
+#     dist.init_process_group(
+#         backend="gloo",
+#         timeout=timedelta(seconds=3600)  # 1 hour
+#     )
     
 def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eval_steps=200, max_length=2500, num_train_epochs=3, resume_from_checkpoint=False, extra_args=None):
 
@@ -55,7 +55,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
     print('=====================')
     # Shuffle the training set
     #train_ds = train_ds.shuffle().select(range(40000))
-    train_ds = train_ds.shuffle().select(range(1000))
+    train_ds = train_ds.shuffle()
     valid_ds = valid_ds.select(range(5000))
     #save the dataset we trained on
 
@@ -72,7 +72,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
     )
     
     model = get_peft_model(model, peft_config)
-    #model.gradient_checkpointing_enable()
+    model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     
     print(model.print_trainable_parameters())
@@ -84,7 +84,7 @@ def train_model(model, tokenizer, train_ds, valid_ds, output_path, run_name, eva
         per_device_train_batch_size=extra_args.batch_size,
         resume_from_checkpoint=resume_from_checkpoint,
         gradient_accumulation_steps=extra_args.gradient_accumulation_steps,
-        #gradient_checkpointing=True,
+        gradient_checkpointing=True,
         optim="adamw_torch_fused",
         neftune_noise_alpha=5,
         logging_steps=5,
@@ -161,7 +161,7 @@ def train_main(conv_ds_path, output_path, model_name, run_name, num_epochs, resu
     model = AutoModelForCausalLM.from_pretrained(model_name,
                                                  token=huggingface_token,
                                                  #device_map={"": local_rank},  # each process gets its GPU
-                                                 #device_map="auto",
+                                                 device_map="auto",
                                                  attn_implementation="flash_attention_2" if extra_args.use_flash_attention_2 else None,
                                                  torch_dtype=torch.bfloat16,
                                                  quantization_config=bnb_config).to(device)

@@ -1,6 +1,6 @@
 import os
 import sys
-os.environ['TRANSFORMERS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
+os.environ['HF_HOME'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ['HF_DATASETS_CACHE'] = '/mnt/swordfish-pool2/milad/hf-cache'
 os.environ["WANDB_DIR"] = '/mnt/swordfish-pool2/milad/wandb-dir'
 sys.path.append('./src-py')
@@ -172,19 +172,19 @@ def process_dataset_for_training(tokenizer, dataset_path, output_path, max_num_t
     conv_dataset = datasets.Dataset.train_test_split(conv_dataset, test_size=0.1, seed=123)
 
     train_journalist_dataset = prepare_dataset(tokenizer, conv_dataset['train'], role="Journalist", max_num_turns=max_num_turns)
-    train_researcher_dataset = prepare_dataset(tokenizer, conv_dataset['train'], role="Researcher", max_num_turns=max_num_turns)
+    #train_researcher_dataset = prepare_dataset(tokenizer, conv_dataset['train'], role="Researcher", max_num_turns=max_num_turns)
     
     test_journalist_dataset = prepare_dataset(tokenizer, conv_dataset['test'], role="Journalist", max_num_turns=max_num_turns)
     test_researcher_dataset = prepare_dataset(tokenizer, conv_dataset['test'], role="Researcher", max_num_turns=max_num_turns)
 
     train_journalist_dataset = split_dataset_by_clm(train_journalist_dataset, 'paper_id')
-    train_researcher_dataset = split_dataset_by_clm(train_researcher_dataset, 'paper_id')
+    #train_researcher_dataset = split_dataset_by_clm(train_researcher_dataset, 'paper_id')
 
     train_journalist_dataset.save_to_disk(output_path + '/train_journalist_ds')
-    train_researcher_dataset.save_to_disk(output_path + '/train_researcher_ds')
+    #train_researcher_dataset.save_to_disk(output_path + '/train_researcher_ds')
     
     test_journalist_dataset.save_to_disk(output_path + '/test_journalist_ds')
-    test_researcher_dataset.save_to_disk(output_path + '/test_researcher_ds')
+    #test_researcher_dataset.save_to_disk(output_path + '/test_researcher_ds')
 
 
 if __name__ == "__main__":
